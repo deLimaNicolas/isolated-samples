@@ -1,0 +1,66 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Igara API Resources
+
+Parameters:
+  HostedZoneParameter:
+    Type: String
+  DomainNameParameter:
+    Type: String
+  ApiDomainNameParameter:
+    Type: String
+  CertificateArn:
+    Type: String
+  WorkflowTableName:
+    Type: String
+  DatasetTableName:
+    Type: String
+  ExecutionTableName:
+    Type: String
+  SqsQueueArn:
+    Type: String
+
+Resources:
+  ApiGatewayRestApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: dev
+      Domain:
+        DomainName: !Join ["", [!Ref ApiDomainNameParameter, !Ref DomainNameParameter]]
+        CertificateArn: !Ref CertificateArn
+        Route53:
+          HostedZoneId: !Ref HostedZoneParameter
+
+  FastApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../src/
+      Handler: app.lambda_handler
+      Runtime: python3.9
+      MemorySize: 512
+      Timeout: 15
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref WorkflowTableName
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DatasetTableName
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ExecutionTableName
+        - Statement:
+            Effect: Allow
+            Action:
+              - sqs:SendMessage
+            Resource: !Ref SqsQueueArn
+      Environment:
+        Variables:
+          WORKFLOW_TABLE: !Ref WorkflowTableName
+          DATASET_TABLE: !Ref DatasetTableName
+          EXECUTION_TABLE: !Ref ExecutionTableName
+      Events:
+        ProxyApi:
+          Type: Api
+          Properties:
+            Path: /{proxy+}
+            Method: ANY
+            RestApiId: !Ref ApiGatewayRestApi
+
