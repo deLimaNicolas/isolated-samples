@@ -1,0 +1,144 @@
+spDashboard:
+  - name: sp-dashboard
+    kubeContext: main
+    image: "nginx:stable"
+    port: "80"
+    hostnamePrefix: "sp-demo"
+    probe:
+      port: "80"
+      path: "/"
+    customValues:
+      version: 1
+    envSecrets:
+
+
+cronjobs:
+  - name: pricing
+    bin: "node bin/backend-pricing.js"
+    schedule: "15,45 * * * *"
+    envSecrets:
+      - name: mixed-secrets
+      - name: rmq-secret
+      - name: mongodb-secret
+      - name: loggly-secret
+  - name: account-sweeper
+    bin: "node bin/backend-prometheum-account-sweeper.js -s false"
+    schedule: "30 16 * * *"
+    envSecrets:
+      - name: mixed-secrets
+      - name: rmq-secret
+      - name: mongodb-secret
+      - name: loggly-secret
+  - name: fis-aggregator
+    bin: "sh -c 'node bin/backend-fis-aggregator.js --fromDate $(date -d \"7 days ago\" +%Y-%m-%d)'"
+    schedule: "30 17 * * MON"
+    envSecrets:
+      - name: mixed-secrets
+      - name: rmq-secret
+      - name: mongodb-secret
+      - name: loggly-secret
+
+ingressDeployments:
+  - name: app-dashboard
+    kubeContext: main
+    image: "nginx:stable"
+    port: "80"
+    hostnamePrefix: ""
+    probe:
+      port: "80"
+      path: "/"
+    podMonitoring:
+      enable: false
+    customValues:
+      version: 1
+    envSecrets:
+  - name: backend-api
+    kubeContext: main
+    port: "3003"
+    hostnamePrefix: "api-"
+    probe:
+      path: "/api-version/"
+      port: "3003"
+    podMonitoring:
+      enable: true
+      port: 3003
+    customValues:
+      bin: "node bin/backend-api.js"
+    envSecrets:
+      - name: email-secret
+      - name: sparkpost-secret
+      - name: mixed-secrets
+      - name: rmq-secret
+      - name: mongodb-secret
+      - name: backend-api-secret
+      - name: auth0-secret
+      - name: kms-secret
+      - name: loggly-secret
+      - name: coinbase-secret
+  - name: data-api
+    kubeContext: main
+    port: "3300"
+    hostnamePrefix: "data-api-"
+    probe:
+      port: "3300"
+      path: "/api/v2/docs"
+    podMonitoring:
+      enable: false
+    customValues:
+      bin: "node bin/backend-data-api.js"
+    envSecrets:
+      - name: email-secret
+      - name: sparkpost-secret
+      - name: mixed-secrets
+      - name: rmq-secret
+      - name: mongodb-secret
+      - name: backend-api-secret
+      - name: auth0-secret
+      - name: kms-secret
+      - name: loggly-secret
+      - name: coinbase-secret
+  - name: app-exchange-api
+    kubeContext: main
+    port: "3010"
+    hostnamePrefix: "exchange-api-"
+    probe:
+      path: "/health/"
+      port: "3010"
+    podMonitoring:
+      enable: false
+    customValues:
+      bin: "node bin/backend-exchange-processor-api.js"
+    envSecrets:
+      - name: rmq-secret
+      - name: mongodb-secret
+      - name: coinbase-secret
+      - name: mixed-secrets
+      - name: kms-secret
+      - name: loggly-secret
+simpleDeployments:
+  verafiers:
+    - name: sol
+      envSecrets:
+        - name: mixed-secrets
+        - name: rmq-secret
+        - name: loggly-secret
+      minReplicas: 1
+      maxReplicas: 5
+      queuesNames:
+        - address-harvest-SOL
+      podMonitoring:
+        enable: false
+    - name: xlm
+      envSecrets:
+        - name: blockdaemon-secret
+        - name: mixed-secrets
+        - name: rmq-secret
+        - name: loggly-secret
+      minReplicas: 1
+      maxReplicas: 5
+      queuesNames:
+        - address-harvest-XLM
+      podMonitoring:
+        enable: false
+    - name: btc
+...

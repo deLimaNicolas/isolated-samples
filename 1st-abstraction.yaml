@@ -1,0 +1,24 @@
+prod:
+  nodepool: "simple-16c-64g"
+  staticIps:
+    app-dashboard: ledgible-ui-lb-static
+    backend-api: ledgible-api-ip
+    app-exchange-api: exchange-api
+    data-api: ledgible-k8s-data-api-global
+  ingresses:
+    app-dashboard: app.ledgible.io
+    backend-api: api.ledgible.io
+    app-exchange-api: exchange-api.ledgible.io
+    data-api: data-api.ledgible.io
+  servicesToInstall:
+    autoscaler: true
+    monitoring: false
+    one-password: true
+    mongo: false
+    rmq: false
+    ingress-deployment: true
+    verafier: true
+    simple-deployment: true
+    sp-dashboard: true
+    cronjob: true
+
